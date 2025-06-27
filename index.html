@@ -4,7 +4,7 @@
   <link rel="manifest" href="manifest.json" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inventario EPP</title>
+  <title>Inventario EPP</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -15,7 +15,7 @@
   </style>
 </head>
 <body>
-  <h1>Inventario EPP</h1>
+  <h1>Inventario EPP</h1>
 
   <input type="file" id="fileInput" accept=".xlsx" />
 
@@ -48,24 +48,52 @@
   </table>
 
   <script>
+    /************************************
+     * Helpers
+     ***********************************/
+    const getField = (row, aliases) => {
+      for (const alias of aliases) {
+        if (alias in row && row[alias] !== undefined && row[alias] !== null && row[alias] !== '') {
+          return row[alias];
+        }
+      }
+      return '';
+    };
+
+    const normalizarNombre = nombre => (nombre || '').toString().trim().toLowerCase();
+
+    /************************************
+     * Datos en memoria
+     ***********************************/
     let inventario = {};
 
-    document.getElementById('fileInput').addEventListener('change', function(e) {
+    /************************************
+     * Importar Excel (soporta formatos viejos y nuevos, mayúsculas/acentos)
+     ***********************************/
+    document.getElementById('fileInput').addEventListener('change', function (e) {
       const reader = new FileReader();
-      reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
+      reader.onload = function (ev) {
+        const data = new Uint8Array(ev.target.result);
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const sheet = workbook.Sheets[sheetName];
-        const json = XLSX.utils.sheet_to_json(sheet);
+        const json = XLSX.utils.sheet_to_json(sheet, { defval: '' });
 
         inventario = {};
+
         json.forEach(row => {
-          const epp = normalizarNombre(row.EPP);
+          const eppRaw      = getField(row, ['EPP','epp','Producto','producto','PRODUCTO']);
+          if (!eppRaw) return; // fila vacía
+
+          const cantidadRaw = getField(row, ['Cantidad','cantidad','CANTIDAD','Quantity','quantity']);
+          const marcaRaw    = getField(row, ['Marca','marca','MARCA','Código','Codigo','código','codigo','CÓDIGO','CODIGO']);
+          const talleRaw    = getField(row, ['Talle','talle','TALLE','Ubicación','ubicacion','UBICACIÓN','ubicación']);
+
+          const epp = normalizarNombre(eppRaw);
           inventario[epp] = {
-            codigo: row.Marca || '—',
-            cantidad: parseInt(row.Cantidad) || 0,
-            ubicacion: row.Talle || ''
+            cantidad: parseInt(cantidadRaw) || 0,
+            codigo:   (marcaRaw || '—').toString(),
+            ubicacion:(talleRaw || '').toString()
           };
         });
 
@@ -75,6 +103,9 @@
       reader.readAsArrayBuffer(e.target.files[0]);
     });
 
+    /************************************
+     * Renderizado y búsqueda
+     ***********************************/
     function mostrarInventario(filtrado = null) {
       const tbody = document.querySelector('#inventoryTable tbody');
       tbody.innerHTML = '';
@@ -84,77 +115,58 @@
       for (const [epp, datos] of lista) {
         const row = document.createElement('tr');
 
-        const tdCantidad = document.createElement('td');
-        tdCantidad.textContent = datos.cantidad;
+        row.innerHTML = `
+          <td>${datos.cantidad}</td>
+          <td style="cursor:pointer">${epp}</td>
+          <td>${datos.codigo}</td>
+          <td>${datos.ubicacion}</td>
+        `;
 
-        const tdEpp = document.createElement('td');
-        tdEpp.textContent = epp;
-        tdEpp.style.cursor = 'pointer';
-        tdEpp.onclick = () => {
+        // Rellenar inputs al hacer clic
+        row.children[1].onclick = () => {
           document.getElementById('itemName').value = epp;
-          document.getElementById('itemCode').value = datos.codigo || '';
-          document.getElementById('itemLocation').value = datos.ubicacion || '';
+          document.getElementById('itemCode').value = datos.codigo === '—' ? '' : datos.codigo;
+          document.getElementById('itemLocation').value = datos.ubicacion;
         };
 
-        const tdMarca = document.createElement('td');
-        tdMarca.textContent = datos.codigo || '—';
-
-        const tdTalle = document.createElement('td');
-        tdTalle.textContent = datos.ubicacion || '';
-
-        row.appendChild(tdCantidad);
-        row.appendChild(tdEpp);
-        row.appendChild(tdMarca);
-        row.appendChild(tdTalle);
         tbody.appendChild(row);
       }
     }
 
     function buscarInventario() {
       const texto = document.getElementById('searchInput').value.trim().toLowerCase();
-      if (texto === '') {
-        mostrarInventario();
-        return;
-      }
+      if (texto === '') return mostrarInventario();
 
-      const filtrado = Object.entries(inventario).filter(([epp, datos]) => {
-        return epp.includes(texto) || (datos.codigo && datos.codigo.toLowerCase().includes(texto));
-      });
-
+      const filtrado = Object.entries(inventario).filter(([epp, datos]) =>
+        epp.includes(texto) || (datos.codigo && datos.codigo.toLowerCase().includes(texto))
+      );
       mostrarInventario(filtrado);
     }
 
-    function normalizarNombre(nombre) {
-      return nombre.trim().toLowerCase();
-    }
-
+    /************************************
+     * Operaciones CRUD
+     ***********************************/
     function agregar() {
       const eppOriginal = document.getElementById('itemName').value;
-      const cantidad = parseInt(document.getElementById('itemQuantity').value);
-      const marca = document.getElementById('itemCode').value || '—';
-      const talle = document.getElementById('itemLocation').value || '';
+      const cantidad    = parseInt(document.getElementById('itemQuantity').value);
+      const marca       = document.getElementById('itemCode').value || '—';
+      const talle       = document.getElementById('itemLocation').value || '';
 
       if (!eppOriginal || isNaN(cantidad)) return;
 
       const epp = normalizarNombre(eppOriginal);
-      inventario[epp] = {
-        codigo: marca,
-        cantidad: cantidad,
-        ubicacion: talle
-      };
+      inventario[epp] = { cantidad, codigo: marca, ubicacion: talle };
       mostrarInventario();
       guardarInventario();
     }
 
     function sumar() {
       const eppOriginal = document.getElementById('itemName').value;
-      const cantidad = parseInt(document.getElementById('itemQuantity').value);
+      const cantidad    = parseInt(document.getElementById('itemQuantity').value);
       if (!eppOriginal || isNaN(cantidad)) return;
 
       const epp = normalizarNombre(eppOriginal);
-      if (!inventario[epp]) {
-        inventario[epp] = { codigo: '—', cantidad: 0, ubicacion: '' };
-      }
+      if (!inventario[epp]) inventario[epp] = { cantidad: 0, codigo: '—', ubicacion: '' };
       inventario[epp].cantidad += cantidad;
       mostrarInventario();
       guardarInventario();
@@ -162,30 +174,23 @@
 
     function restar() {
       const eppOriginal = document.getElementById('itemName').value;
-      const cantidad = parseInt(document.getElementById('itemQuantity').value);
+      const cantidad    = parseInt(document.getElementById('itemQuantity').value);
       if (!eppOriginal || isNaN(cantidad)) return;
 
       const epp = normalizarNombre(eppOriginal);
-      if (!inventario[epp]) {
-        inventario[epp] = { codigo: '—', cantidad: 0, ubicacion: '' };
-      }
-      inventario[epp].cantidad -= cantidad;
-      if (inventario[epp].cantidad < 0) inventario[epp].cantidad = 0;
+      if (!inventario[epp]) inventario[epp] = { cantidad: 0, codigo: '—', ubicacion: '' };
+      inventario[epp].cantidad = Math.max(inventario[epp].cantidad - cantidad, 0);
       mostrarInventario();
       guardarInventario();
     }
 
     function editarCodigo() {
       const eppOriginal = document.getElementById('itemName').value;
-      const nuevaMarca = document.getElementById('itemCode').value;
+      const nuevaMarca  = document.getElementById('itemCode').value;
       if (!eppOriginal || !nuevaMarca) return;
 
       const epp = normalizarNombre(eppOriginal);
-      if (!inventario[epp]) {
-        alert('Ese EPP no existe en el inventario.');
-        return;
-      }
-
+      if (!inventario[epp]) return alert('Ese EPP no existe en el inventario.');
       inventario[epp].codigo = nuevaMarca;
       mostrarInventario();
       guardarInventario();
@@ -193,40 +198,38 @@
 
     function editarUbicacion() {
       const eppOriginal = document.getElementById('itemName').value;
-      const nuevoTalle = document.getElementById('itemLocation').value;
+      const nuevoTalle  = document.getElementById('itemLocation').value;
       if (!eppOriginal || !nuevoTalle) return;
 
       const epp = normalizarNombre(eppOriginal);
-      if (!inventario[epp]) {
-        alert('Ese EPP no existe en el inventario.');
-        return;
-      }
-
+      if (!inventario[epp]) return alert('Ese EPP no existe en el inventario.');
       inventario[epp].ubicacion = nuevoTalle;
       mostrarInventario();
       guardarInventario();
     }
 
+    /************************************
+     * Exportar Excel
+     ***********************************/
     function descargarExcel() {
       const data = Object.entries(inventario).map(([epp, datos]) => ({
         Cantidad: datos.cantidad,
         EPP: epp,
-        Marca: datos.codigo || '—',
-        Talle: datos.ubicacion || ''
+        Marca: datos.codigo,
+        Talle: datos.ubicacion
       }));
-      if (data.length === 0) {
-        alert('El inventario está vacío.');
-        return;
-      }
+      if (data.length === 0) return alert('El inventario está vacío.');
+
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
       XLSX.writeFile(wb, 'Inventario_EPP.xlsx');
     }
 
-    function guardarInventario() {
-      localStorage.setItem('inventario', JSON.stringify(inventario));
-    }
+    /************************************
+     * Persistencia local
+     ***********************************/
+    const guardarInventario = () => localStorage.setItem('inventario', JSON.stringify(inventario));
 
     function cargarInventario() {
       const data = localStorage.getItem('inventario');
@@ -235,16 +238,4 @@
         mostrarInventario();
       }
     }
-    cargarInventario();
-  </script>
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js')
-          .then(reg => console.log('Service Worker registrado:', reg.scope))
-          .catch(err => console.log('Error al registrar Service Worker:', err));
-      });
-    }
-  </script>
-</body>
-</html>
+    cargar
