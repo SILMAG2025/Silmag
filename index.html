@@ -20,16 +20,16 @@
   <input type="file" id="fileInput" accept=".xlsx" />
 
   <div>
-    <input type="text" id="itemName" placeholder="Nombre del producto" />
+    <input type="text" id="itemName" placeholder="Marca" />
     <input type="number" id="itemQuantity" placeholder="Cantidad" />
-    <input type="text" id="itemCode" placeholder="Código (opcional)" />
-    <input type="text" id="itemLocation" placeholder="Ubicación (opcional)" />
+    <input type="text" id="itemCode" placeholder="EPP" />
+    <input type="text" id="itemLocation" placeholder="Talle" />
     <br />
     <button onclick="agregar()">Agregar</button>
     <button onclick="sumar()">Sumar</button>
     <button onclick="restar()">Restar</button>
-    <button onclick="editarCodigo()">Agregar/Editar Código</button>
-    <button onclick="editarUbicacion()">Agregar/Editar Ubicación</button>
+    <button onclick="editarCodigo()">Agregar/Editar Cantidad</button>
+    <button onclick="editarUbicacion()">Agregar/Editar Talle</button>
     <button onclick="descargarExcel()">Descargar Excel</button>
   </div>
 
@@ -38,10 +38,10 @@
   <table id="inventoryTable">
     <thead>
       <tr>
-        <th>Producto</th>
-        <th>Código</th>
+        <th>Marca</th>
         <th>Cantidad</th>
-        <th>Ubicación</th>
+        <th>EPP</th>
+        <th>Talle</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -208,7 +208,7 @@
     }
 
     function descargarExcel() {
-      // Convierte el objeto inventario a un array de objetos compatible con SheetJS
+    
       const data = Object.entries(inventario).map(([producto, datos]) => ({
         Producto: producto,
         Código: datos.codigo || '—',
