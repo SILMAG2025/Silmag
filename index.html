@@ -4,7 +4,7 @@
   <link rel="manifest" href="manifest.json" />
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Inventario</title>
+  <title>Inventario EPP</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js"></script>
   <style>
     body { font-family: Arial, sans-serif; padding: 20px; }
@@ -15,32 +15,32 @@
   </style>
 </head>
 <body>
-  <h1>Inventario</h1>
+  <h1>Inventario EPP</h1>
 
   <input type="file" id="fileInput" accept=".xlsx" />
 
   <div>
-    <input type="text" id="itemName" placeholder="Marca" />
+    <input type="text" id="itemName" placeholder="EPP" />
     <input type="number" id="itemQuantity" placeholder="Cantidad" />
-    <input type="text" id="itemCode" placeholder="EPP" />
-    <input type="text" id="itemLocation" placeholder="Talle" />
+    <input type="text" id="itemCode" placeholder="Marca (opcional)" />
+    <input type="text" id="itemLocation" placeholder="Talle (opcional)" />
     <br />
     <button onclick="agregar()">Agregar</button>
     <button onclick="sumar()">Sumar</button>
     <button onclick="restar()">Restar</button>
-    <button onclick="editarCodigo()">Agregar/Editar Cantidad</button>
+    <button onclick="editarCodigo()">Agregar/Editar Marca</button>
     <button onclick="editarUbicacion()">Agregar/Editar Talle</button>
     <button onclick="descargarExcel()">Descargar Excel</button>
   </div>
 
-  <input type="text" id="searchInput" placeholder="Buscar por nombre o código..." oninput="buscarInventario()" />
+  <input type="text" id="searchInput" placeholder="Buscar por EPP o Marca..." oninput="buscarInventario()" />
 
   <table id="inventoryTable">
     <thead>
       <tr>
-        <th>Marca</th>
         <th>Cantidad</th>
         <th>EPP</th>
+        <th>Marca</th>
         <th>Talle</th>
       </tr>
     </thead>
@@ -61,11 +61,11 @@
 
         inventario = {};
         json.forEach(row => {
-          const nombre = normalizarNombre(row.Producto);
-          inventario[nombre] = {
-            codigo: row.Código || '—',
+          const epp = normalizarNombre(row.EPP);
+          inventario[epp] = {
+            codigo: row.Marca || '—',
             cantidad: parseInt(row.Cantidad) || 0,
-            ubicacion: row.Ubicación || ''
+            ubicacion: row.Talle || ''
           };
         });
 
@@ -81,31 +81,31 @@
 
       const lista = filtrado || Object.entries(inventario);
 
-      for (const [producto, datos] of lista) {
+      for (const [epp, datos] of lista) {
         const row = document.createElement('tr');
-
-        const tdProducto = document.createElement('td');
-        tdProducto.textContent = producto;
-        tdProducto.style.cursor = 'pointer';
-        tdProducto.onclick = () => {
-          document.getElementById('itemName').value = producto;
-          document.getElementById('itemCode').value = datos.codigo || '';
-          document.getElementById('itemLocation').value = datos.ubicacion || '';
-        };
-
-        const tdCodigo = document.createElement('td');
-        tdCodigo.textContent = datos.codigo || '—';
 
         const tdCantidad = document.createElement('td');
         tdCantidad.textContent = datos.cantidad;
 
-        const tdUbicacion = document.createElement('td');
-        tdUbicacion.textContent = datos.ubicacion || '';
+        const tdEpp = document.createElement('td');
+        tdEpp.textContent = epp;
+        tdEpp.style.cursor = 'pointer';
+        tdEpp.onclick = () => {
+          document.getElementById('itemName').value = epp;
+          document.getElementById('itemCode').value = datos.codigo || '';
+          document.getElementById('itemLocation').value = datos.ubicacion || '';
+        };
 
-        row.appendChild(tdProducto);
-        row.appendChild(tdCodigo);
+        const tdMarca = document.createElement('td');
+        tdMarca.textContent = datos.codigo || '—';
+
+        const tdTalle = document.createElement('td');
+        tdTalle.textContent = datos.ubicacion || '';
+
         row.appendChild(tdCantidad);
-        row.appendChild(tdUbicacion);
+        row.appendChild(tdEpp);
+        row.appendChild(tdMarca);
+        row.appendChild(tdTalle);
         tbody.appendChild(row);
       }
     }
@@ -117,8 +117,8 @@
         return;
       }
 
-      const filtrado = Object.entries(inventario).filter(([producto, datos]) => {
-        return producto.includes(texto) || (datos.codigo && datos.codigo.toLowerCase().includes(texto));
+      const filtrado = Object.entries(inventario).filter(([epp, datos]) => {
+        return epp.includes(texto) || (datos.codigo && datos.codigo.toLowerCase().includes(texto));
       });
 
       mostrarInventario(filtrado);
@@ -129,91 +129,90 @@
     }
 
     function agregar() {
-      const nombreOriginal = document.getElementById('itemName').value;
+      const eppOriginal = document.getElementById('itemName').value;
       const cantidad = parseInt(document.getElementById('itemQuantity').value);
-      const codigo = document.getElementById('itemCode').value || '—';
-      const ubicacion = document.getElementById('itemLocation').value || '';
+      const marca = document.getElementById('itemCode').value || '—';
+      const talle = document.getElementById('itemLocation').value || '';
 
-      if (!nombreOriginal || isNaN(cantidad)) return;
+      if (!eppOriginal || isNaN(cantidad)) return;
 
-      const nombre = normalizarNombre(nombreOriginal);
-      inventario[nombre] = {
-        codigo: codigo,
+      const epp = normalizarNombre(eppOriginal);
+      inventario[epp] = {
+        codigo: marca,
         cantidad: cantidad,
-        ubicacion: ubicacion
+        ubicacion: talle
       };
       mostrarInventario();
       guardarInventario();
     }
 
     function sumar() {
-      const nombreOriginal = document.getElementById('itemName').value;
+      const eppOriginal = document.getElementById('itemName').value;
       const cantidad = parseInt(document.getElementById('itemQuantity').value);
-      if (!nombreOriginal || isNaN(cantidad)) return;
+      if (!eppOriginal || isNaN(cantidad)) return;
 
-      const nombre = normalizarNombre(nombreOriginal);
-      if (!inventario[nombre]) {
-        inventario[nombre] = { codigo: '—', cantidad: 0, ubicacion: '' };
+      const epp = normalizarNombre(eppOriginal);
+      if (!inventario[epp]) {
+        inventario[epp] = { codigo: '—', cantidad: 0, ubicacion: '' };
       }
-      inventario[nombre].cantidad += cantidad;
+      inventario[epp].cantidad += cantidad;
       mostrarInventario();
       guardarInventario();
     }
 
     function restar() {
-      const nombreOriginal = document.getElementById('itemName').value;
+      const eppOriginal = document.getElementById('itemName').value;
       const cantidad = parseInt(document.getElementById('itemQuantity').value);
-      if (!nombreOriginal || isNaN(cantidad)) return;
+      if (!eppOriginal || isNaN(cantidad)) return;
 
-      const nombre = normalizarNombre(nombreOriginal);
-      if (!inventario[nombre]) {
-        inventario[nombre] = { codigo: '—', cantidad: 0, ubicacion: '' };
+      const epp = normalizarNombre(eppOriginal);
+      if (!inventario[epp]) {
+        inventario[epp] = { codigo: '—', cantidad: 0, ubicacion: '' };
       }
-      inventario[nombre].cantidad -= cantidad;
-      if (inventario[nombre].cantidad < 0) inventario[nombre].cantidad = 0;
+      inventario[epp].cantidad -= cantidad;
+      if (inventario[epp].cantidad < 0) inventario[epp].cantidad = 0;
       mostrarInventario();
       guardarInventario();
     }
 
     function editarCodigo() {
-      const nombreOriginal = document.getElementById('itemName').value;
-      const nuevoCodigo = document.getElementById('itemCode').value;
-      if (!nombreOriginal || !nuevoCodigo) return;
+      const eppOriginal = document.getElementById('itemName').value;
+      const nuevaMarca = document.getElementById('itemCode').value;
+      if (!eppOriginal || !nuevaMarca) return;
 
-      const nombre = normalizarNombre(nombreOriginal);
-      if (!inventario[nombre]) {
-        alert('Ese producto no existe en el inventario.');
+      const epp = normalizarNombre(eppOriginal);
+      if (!inventario[epp]) {
+        alert('Ese EPP no existe en el inventario.');
         return;
       }
 
-      inventario[nombre].codigo = nuevoCodigo;
+      inventario[epp].codigo = nuevaMarca;
       mostrarInventario();
       guardarInventario();
     }
 
     function editarUbicacion() {
-      const nombreOriginal = document.getElementById('itemName').value;
-      const nuevaUbicacion = document.getElementById('itemLocation').value;
-      if (!nombreOriginal || !nuevaUbicacion) return;
+      const eppOriginal = document.getElementById('itemName').value;
+      const nuevoTalle = document.getElementById('itemLocation').value;
+      if (!eppOriginal || !nuevoTalle) return;
 
-      const nombre = normalizarNombre(nombreOriginal);
-      if (!inventario[nombre]) {
-        alert('Ese producto no existe en el inventario.');
+      const epp = normalizarNombre(eppOriginal);
+      if (!inventario[epp]) {
+        alert('Ese EPP no existe en el inventario.');
         return;
       }
 
-      inventario[nombre].ubicacion = nuevaUbicacion;
+      inventario[epp].ubicacion = nuevoTalle;
       mostrarInventario();
       guardarInventario();
     }
 
     function descargarExcel() {
-    
-      const data = Object.entries(inventario).map(([producto, datos]) => ({
-        Producto: producto,
-        Código: datos.codigo || '—',
+      const data = Object.entries(inventario).map(([epp, datos]) => ({
         Cantidad: datos.cantidad,
-        Ubicación: datos.ubicacion || ''
+        EPP: epp,
+        Marca: datos.codigo || '—',
+        Talle: datos.ubicacion || ''
       }));
       if (data.length === 0) {
         alert('El inventario está vacío.');
@@ -222,7 +221,7 @@
       const ws = XLSX.utils.json_to_sheet(data);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Inventario');
-      XLSX.writeFile(wb, 'Inventario_actualizado.xlsx');
+      XLSX.writeFile(wb, 'Inventario_EPP.xlsx');
     }
 
     function guardarInventario() {
